@@ -1,0 +1,90 @@
+---
+# tasks file for gitlab
+- name: Get token
+  uri:
+    url: "{{ my_external_address }}/oauth/token/"
+    method: POST
+    user: root
+    password: "{{ gitlab_root_password }}"
+    body: "{\"grant_type\": \"password\", \"username\": \"root\", \"password\":\"{{ gitlab_root_password }}\"}"
+    body_format: json
+    return_content: yes
+  register: login
+  tags:
+    - user
+    - project
+
+- name: check user doesn t exist
+  uri:
+    url: "{{ my_external_address }}/api/v4/users?search={{ username }}"
+    headers:
+      Authorization: "Bearer {{ login.json.access_token}}"
+      content-type: "application/json"
+  ignore_errors: yes
+  register: user_exist
+  tags:
+    - user
+    - project
+
+- name: Create Gitlab User
+  uri:
+    url: "{{ my_external_address }}/api/v4/users/"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ login.json.access_token}}"
+      content-type: "application/json"
+    body: "{\"email\": \"{{ email }}\",\"username\": \"{{ username }}\",\"name\": \"{{ username }}\",\"password\": \"{{ password }}\",\"skip_confirmation\":\"{{ skipconfirmation }}\"}"
+    body_format: json
+    status_code: 201
+  when: user_exist.x_total == "0"
+  tags:
+    - user
+
+- name: check user exist
+  uri:
+    url: "{{ my_external_address }}/api/v4/users?search={{ username }}"
+    headers:
+      Authorization: "Bearer {{ login.json.access_token}}"
+      content-type: "application/json"
+  register: user_exist
+  tags:
+    - user
+    - project
+
+- name: Create Gitlab Project
+  uri:
+    url: "{{ my_external_address }}/api/v4/projects/user/{{ user_exist.json[0].id }}"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ login.json.access_token}}"
+      content-type: "application/json"
+    body: "{\"user_id\": {{ user_exist.json[0].id | int }},\"name\": \"{{ project }}\"}"
+    status_code: 201
+    body_format: json
+    return_content: yes
+  ignore_errors: yes
+  register: project_sta
+  when: user_exist.x_total != "0"
+  tags:
+    - project
+
+- name: debug
+  debug:
+    msg: "{{ project_sta.json.id }}"
+  tags:
+    - project
+
+- name: Create Gitlab master branch
+  uri:
+    url: "{{ my_external_address }}/api/v4/projects/{{ project_sta.json.id }}/repository/branches"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ login.json.access_token}}"
+      content-type: "application/json"
+    body: "{\"branch\": \"master\",\"ref\": \"master\"}"
+    body_format: json
+    return_content: yes
+  ignore_errors: yes
+  when: user_exist.x_total != "0"
+  tags:
+     project 

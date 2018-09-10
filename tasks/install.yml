@@ -1,0 +1,74 @@
+---
+# tasks file for gitlab
+- name: Install GitLab dependencies.
+  become: yes
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - openssh-server
+    - postfix
+    - curl
+    - ca-certificates 
+  when: gitlabrb_status.stat.exists == False
+  tags:
+    - install
+
+- name: Download GitLab repository installation script.
+  get_url:
+    url: "{{ gitlab_repository_installation_url }}"
+    dest: /tmp/gitlab_install_repository.sh
+  when: gitlabrb_status.stat.exists == False
+  tags:
+    - install
+
+- name: Install GitLab repository
+  command: bash /tmp/gitlab_install_repository.sh
+  become: yes
+  when: gitlabrb_status.stat.exists == False
+  tags:
+    - install
+
+- name: Install GitLab
+  package:
+    name: gitlab-ce
+    state: present
+  become: yes
+  when: gitlabrb_status.stat.exists == False
+  tags:
+    - install
+
+- name: Check that the gitlab.rb file exists
+  stat:
+    path: "{{ gitlab_rb_file }}"
+  register: gitlabrb_status
+  tags:
+    - install
+    - configure
+
+- name: Replace external url
+  replace:
+    path: "{{ gitlab_rb_file }}"
+    regexp: external_url 'http://gitlab.example.com' 
+    replace: external_url "{{ my_external_address }}"
+  become: yes
+  when: gitlabrb_status.stat.exists == True
+  tags:
+    - install
+    - configure
+
+- name: Reconfigure GitLab 
+  command: gitlab-ctl reconfigure
+  become: yes
+  when: gitlabrb_status.stat.exists == True
+  tags:
+    - install
+    - configure
+
+# Only in postconfiguration
+- name: Post configure root
+  command: "gitlab-rake gitlab:setup RAILS_ENV=production GITLAB_ROOT_PASSWORD={{ gitlab_root_password }} GITLAB_ROOT_EMAIL={{ gitlab_root_email }} force=yes"
+  become: yes
+  when: gitlabrb_status.stat.exists == True
+  tags:
+    - install

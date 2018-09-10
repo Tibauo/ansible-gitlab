@@ -1,0 +1,15 @@
+---
+# defaults file for gitlab
+my_external_address: 'http://localhost'
+gitlab_root_password: "gitlab-root"
+gitlab_root_email: "demo@lab.lab"
+
+gitlab_rb_file: /etc/gitlab/gitlab.rb
+
+
+# user
+email: user@email.mail
+username: user
+password: user-password
+skipconfirmation: true
+project: demo

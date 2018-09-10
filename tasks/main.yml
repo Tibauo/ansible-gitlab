@@ -1,0 +1,30 @@
+---
+# tasks file for gitlab
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yaml"
+  tags: install
+
+- name: Check that the gitlab.rb file exists
+  stat:
+    path: "{{ gitlab_rb_file }}"
+  register: gitlabrb_status
+  tags:
+    - install
+    - configure
+
+- name: Disable firewalld
+  become: yes
+  systemd:
+    name: firewalld
+    state: stopped
+  when: ansible_os_family == "RedHat"
+  tags:
+    - install
+
+- name: Include install gitlab
+  include: install.yml
+  when: gitlab is defined
+
+- name: Include configure gitlab
+  include: configure.yml
+  when: gitlab is defined
