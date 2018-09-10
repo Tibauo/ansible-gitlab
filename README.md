@@ -5,6 +5,7 @@ The goal of this role is :
 - Create project for user
 - Create master branch
 
-How to
+How to:
+-------
 ansible-playbook playbook.yml -K -e gitlab=true
 
